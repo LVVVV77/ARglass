@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI 运动处方 v6.0 - 八通道全维度重塑系统</title>
+    <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+    <style>
+        :root {
+            --blue-main: #0ea5e9;
+            --blue-dark: #0369a1;
+            --tech-cyan: #22d3ee;
+            --text-main: #1e293b;
+            --text-muted: #64748b;
+            --bg-page: #020617; 
+            --accent: #6366f1;
+            --glass: rgba(255, 255, 255, 0.98);
+            --card-bg: #f8fafc;
+            --neon-green: #10b981;
+            --warning: #f59e0b;
+        }
+
+        body { 
+            font-family: 'PingFang SC', 'SF Pro Display', system-ui, sans-serif; 
+            background: var(--bg-page); 
+            margin: 0; padding: 20px;
+            color: var(--text-main);
+            background-image: radial-gradient(circle at 2px 2px, rgba(255,255,255,0.05) 1px, transparent 0);
+            background-size: 40px 40px;
+        }
+
+        .bg-glow {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(circle at 80% 20%, rgba(99, 102, 241, 0.2) 0%, transparent 40%),
+                        radial-gradient(circle at 20% 80%, rgba(34, 211, 238, 0.15) 0%, transparent 40%);
+            z-index: -1;
+        }
+
+        .container {
+            max-width: 1100px; margin: 20px auto;
+            background: var(--glass); border-radius: 40px;
+            box-shadow: 0 50px 100px -20px rgba(0, 0, 0, 0.7);
+            overflow: hidden; animation: slideUp 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+            border: 1px solid rgba(255,255,255,0.1);
+        }
+
+        @keyframes slideUp {
+            from { opacity: 0; transform: translateY(60px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .header {
+            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+            padding: 50px 40px; text-align: center; color: white;
+            border-bottom: 4px solid var(--accent);
+        }
+
+        .header h1 { margin: 0; font-size: 28px; font-weight: 900; letter-spacing: 2px; }
+        .header .user-info { margin-top: 15px; font-size: 13px; color: var(--tech-cyan); font-family: monospace; letter-spacing: 2px; }
+
+        .report-body { padding: 40px; }
+
+        /* 方案容器 */
+        .plan-section {
+            margin-bottom: 80px; padding-bottom: 40px; border-bottom: 2px dashed #e2e8f0;
+        }
+        .plan-title-main {
+            font-size: 24px; color: #1e1b4b; margin-bottom: 30px; display: flex; align-items: center; gap: 15px;
+        }
+        .plan-title-main::before { content: ""; width: 6px; height: 30px; background: var(--accent); border-radius: 3px; }
+
+        /* Markdown内容样式 */
+        .step-block { margin-bottom: 40px; animation: fadeIn 0.5s ease forwards; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        h2 { color: #1e1b4b; font-size: 22px; margin: 25px 0 15px 0; }
+        h3 { color: var(--blue-dark); font-size: 18px; margin-top: 20px; display: flex; align-items: center; gap: 10px; }
+        
+        .flow-tag {
+            display: inline-block; padding: 5px 15px; border-radius: 8px;
+            font-size: 12px; font-weight: bold; background: var(--accent); color: white;
+            margin-bottom: 15px; text-transform: uppercase;
+        }
+
+        .detail-grid {
+            display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 10px; margin: 15px 0;
+        }
+        .detail-card {
+            background: #f8fafc; padding: 12px; border-radius: 12px; border: 1px solid #e2e8f0;
+        }
+        .detail-card b { display: block; font-size: 10px; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
+        .detail-card span { font-size: 14px; font-weight: 700; color: var(--blue-dark); }
+
+        .instruction-box {
+            background: #f1f5f9; border-radius: 15px; padding: 18px; margin: 15px 0; border: 1px solid #cbd5e1; font-size: 14px;
+        }
+        .instruction-box ul { margin: 8px 0 0 0; padding-left: 20px; }
+
+        .adjustment-box {
+            display: flex; gap: 12px; margin: 15px 0;
+        }
+        .adj-item { flex: 1; padding: 12px; border-radius: 10px; font-size: 13px; font-weight: 500; }
+        .adj-regress { background: #fff1f2; border: 1px solid #fecdd3; color: #9f1239; }
+        .adj-progress { background: #f0fdf4; border: 1px solid #bbf7d0; color: #166534; }
+
+        .ar-instruction {
+            background: linear-gradient(90deg, #ecfeff, #f0fdfa);
+            border: 1px solid var(--tech-cyan); padding: 15px; border-radius: 12px;
+            margin: 15px 0; color: #0891b2; font-size: 13px; font-style: italic; position: relative;
+        }
+        .ar-instruction::after { content: "AR SENSOR ACTIVE"; position: absolute; top: -8px; right: 10px; background: var(--tech-cyan); color: white; font-size: 9px; padding: 2px 6px; border-radius: 4px; font-weight: bold; }
+
+        .sync-area { position: sticky; bottom: 20px; padding: 0 40px; z-index: 100; }
+        .btn-sync {
+            width: 100%; background: #1e293b; color: white; border: none; 
+            padding: 22px; border-radius: 20px; font-size: 18px; font-weight: 900; 
+            cursor: pointer; transition: 0.4s; box-shadow: 0 20px 40px rgba(0,0,0,0.4);
+        }
+        .btn-sync:hover { background: #000; transform: translateY(-2px); }
+
+        .progress-container { display: none; margin-top: 15px; background: white; padding: 15px; border-radius: 15px; }
+        .progress-track { height: 8px; background: #e2e8f0; border-radius: 4px; overflow: hidden; }
+        .progress-fill { height: 100%; width: 0%; background: linear-gradient(90deg, var(--tech-cyan), var(--accent)); transition: width 0.1s; }
+    </style>
+</head>
+<body>
+
+<div class="bg-glow"></div>
+
+<div class="container">
+    <div class="header">
+        <h1>八通道全维度 AI 运动处方系统</h1>
+        <div class="user-info" id="userTag">正在初始化多维矩阵协议...</div>
+    </div>
+
+    <div class="report-body" id="mainRenderArea">
+        </div>
+
+    <div class="sync-area">
+        <button class="btn-sync" id="syncBtn" onclick="startSync()">
+            上传全维度重塑矩阵 (GLOBAL NEURAL SYNC)
+        </button>
+        <div id="progressContainer" class="progress-container">
+            <div class="progress-track"><div id="progressFill" class="progress-fill"></div></div>
+            <p id="statusText" style="font-size: 12px; color: var(--accent); font-family: monospace; margin-top: 10px; text-align: center; font-weight: bold;"></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const allPlans = {
+        "反刍思维阻断 (Rumination Block)": [
+            {
+                tag: "CHANNEL 1: 挑战 (Challenge) - 抑制 DMN",
+                content: `## 阶段一：极高载荷与神经募集
+### 动作：极限大重量深蹲 (Survival Squat)
+<div class="detail-grid">
+    <div class="detail-card"><b>强度/RPE</b>85% 1RM (极高载荷)</div>
+    <div class="detail-card"><b>组数/次数</b>5 组 x 5 次</div>
+    <div class="detail-card"><b>间歇/节奏</b>180s | 4-0-1-0</div>
+    <div class="detail-card"><b>心理任务</b>倒数三位数减法</div>
+</div>
+<div class="instruction-box">
+    <strong>核心逻辑：</strong> 利用“生存压力”强行关停负责自我反思的大脑默认模式网络（DMN）。
+</div>
+<div class="adjustment-box">
+    <div class="adj-item adj-regress"><strong>退阶：</strong> 史密斯深蹲 (增强轨迹稳定性)</div>
+    <div class="adj-item adj-progress"><strong>进阶：</strong> 底部暂停 2秒 (增加机械张力)</div>
+</div>
+<div class="ar-instruction">AR 视觉任务：下蹲时视野出现动态几何体，需注视锁定目标以分配认知带宽。</div>`
+            },
+            {
+                tag: "CHANNEL 3: 掌控 (Control) - 本体觉夺回",
+                content: `## 阶段二：离心控制与微观感知
+### 动作：慢速单腿 RDL (Slow Tempo RDL)
+<div class="detail-grid">
+    <div class="detail-card"><b>强度/RPE</b>RPE 6 (控制优先)</div>
+    <div class="detail-card"><b>组数/次数</b>3 组 x 12 次/侧</div>
+    <div class="detail-card"><b>间歇/节奏</b>60s | 5-1-1-0</div>
+    <div class="detail-card"><b>目标部位</b>后侧链、平衡系统</div>
+</div>
+<div class="instruction-box">
+    <strong>核心逻辑：</strong> 通过极其缓慢的动作重建小脑与身体的连接，物理性挤占反刍空间。
+</div>`
+            }
+        ],
+        "功能性重塑 (Functional Rebuild)": [
+            {
+                tag: "CHANNEL 5: 核心 (Core Stability) - 动力链优化",
+                content: `## 阶段一：抗旋转稳定性
+### 动作：帕罗夫压推 (Pallof Press)
+<div class="detail-grid">
+    <div class="detail-card"><b>强度</b>中等阻力弹性带</div>
+    <div class="detail-card"><b>组数/次数</b>4 组 x 15 次/侧</div>
+    <div class="detail-card"><b>间歇</b>45s</div>
+    <div class="detail-card"><b>神经目标</b>深层多裂肌募集</div>
+</div>
+<div class="instruction-box">
+    <strong>动作要点：</strong> 维持躯干绝对静止，对抗侧向拉力，重建动力链稳定性。
+</div>
+<div class="adjustment-box">
+    <div class="adj-item adj-regress"><strong>退阶：</strong> 跪姿执行 (降低重心)</div>
+    <div class="adj-item adj-progress"><strong>进阶：</strong> 窄基底站姿 (增加失稳感)</div>
+</div>
+<div class="ar-instruction">AR 引导：在胸前实时显示虚拟重力线，若发生 2° 以上倾斜将发出触觉脉冲。</div>`
+            }
+        ],
+        "肌肉肥大-高阶 (Hypertrophy Matrix)": [
+            {
+                tag: "CHANNEL 2: 代谢 (Metabolic Stress) - 肌浆网扩张",
+                content: `## 阶段一：高密度负荷叠加
+### 动作：哑铃上斜卧推 (Incline DB Press)
+<div class="detail-grid">
+    <div class="detail-card"><b>强度/RPE</b>RPE 9 (接近力竭)</div>
+    <div class="detail-card"><b>组数/次数</b>4 组 x 10-12 次</div>
+    <div class="detail-card"><b>节奏</b>3-1-1-0</div>
+    <div class="detail-card"><b>目标部位</b>上胸部、前三角肌</div>
+</div>
+<div class="instruction-box">
+    <strong>核心逻辑：</strong> 保持持续的机械张力，缩短间歇，制造极致的泵感。
+</div>
+<div class="adjustment-box">
+    <div class="adj-item adj-regress"><strong>退阶：</strong> 器械上斜推胸</div>
+    <div class="adj-item adj-progress"><strong>进阶：</strong> 顶部增加 1/4 次动作</div>
+</div>`
+            }
+        ]
+    };
+
+    window.onload = () => {
+        const renderArea = document.getElementById('mainRenderArea');
+        const account = 'AI-U-' + Math.floor(Math.random()*9000 + 1000);
+        document.getElementById('userTag').innerText = `NODE: ${account} | 协议等级: 八通道矩阵 | 状态: 实时同步中`;
+
+        // 遍历所有方案并渲染
+        for (const [planTitle, steps] of Object.entries(allPlans)) {
+            const section = document.createElement('div');
+            section.className = 'plan-section';
+            
+            let stepsHtml = `<div class="plan-title-main">${planTitle}</div>`;
+            steps.forEach((step, index) => {
+                stepsHtml += `
+                    <div class="step-block">
+                        <span class="flow-tag">${step.tag}</span>
+                        ${marked.parse(step.content)}
+                    </div>
+                `;
+            });
+            
+            section.innerHTML = stepsHtml;
+            renderArea.appendChild(section);
+        }
+    };
+
+    function startSync() {
+        const btn = document.getElementById('syncBtn');
+        const container = document.getElementById('progressContainer');
+        const fill = document.getElementById('progressFill');
+        const status = document.getElementById('statusText');
+
+        btn.disabled = true;
+        btn.innerText = "MATRIX UPLOADING...";
+        container.style.display = 'block';
+
+        let prog = 0;
+        const logs = [
+            "> 正在解析反刍阻断神经回路...",
+            "> 构建功能性动力链映射...",
+            "> 载入高阶肥大训练矩阵表...",
+            "> 同步 AR 视觉传感器偏置...",
+            "> 矩阵写入完成。系统就绪。"
+        ];
+
+        const interval = setInterval(() => {
+            prog += 1;
+            fill.style.width = prog + "%";
+            status.innerText = logs[Math.floor(prog/21)] || "准备就绪";
+            
+            if (prog >= 100) {
+                clearInterval(interval);
+                btn.innerText = "✓ SYSTEM ACTIVE";
+                btn.style.background = "var(--neon-green)";
+                status.innerText = ">>> 八通道协议已成功部署至所有终端。";
+            }
+        }, 25);
+    }
+</script>
+
+</body>
+</html>
