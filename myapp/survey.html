@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AR运动表现系统 - 心理测评</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
+    <style>
+        :root { 
+            --primary: #3498db; 
+            --primary-dark: #2980b9;
+            --primary-glow: rgba(52, 152, 219, 0.4);
+            --sidebar-grad: linear-gradient(180deg, #ffffff 0%, #e2e8f0 40%, #94a3b8 100%);
+            --text-main: #0f172a;
+            --text-muted: #475569;
+        }
+        
+        body { 
+            font-family: 'PingFang SC', 'SF Pro Display', sans-serif; 
+            margin: 0; display: flex; height: 100vh; 
+            overflow: hidden; background: #f8fafc; color: var(--text-main);
+        }
+
+        /* --- 侧边栏 --- */
+        .sidebar { 
+            width: 300px; 
+            background: var(--sidebar-grad); 
+            display: flex; flex-direction: column; 
+            border-right: 1px solid #cbd5e1; position: relative;
+            box-shadow: inset -10px 0 20px rgba(0,0,0,0.02);
+        }
+
+        .user-section { padding: 50px 30px 30px; }
+        .avatar { 
+            width: 60px; height: 60px; background: white; border-radius: 16px; 
+            margin-bottom: 20px; display: flex; align-items: center; justify-content: center;
+            font-size: 28px; box-shadow: 0 8px 16px rgba(0,0,0,0.1); border: 2px solid #fff;
+        }
+        .sport-tag {
+            display: inline-block; background: rgba(15, 23, 42, 0.9); color: #fff;
+            padding: 5px 12px; border-radius: 6px; font-size: 11px; font-weight: 600; 
+            margin-top: 10px; letter-spacing: 0.5px;
+        }
+
+        .menu-list { flex: 1; padding: 20px; }
+        .menu-item { 
+            padding: 16px 18px; border-radius: 12px; display: flex; align-items: center; 
+            color: #475569; transition: all 0.4s ease; 
+            margin-bottom: 10px; cursor: pointer; position: relative;
+            background: rgba(255,255,255,0.2); border: 1px solid rgba(255,255,255,0.3);
+        }
+        .menu-item.active { 
+            background: white; color: var(--primary); font-weight: 700;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.05); transform: translateX(8px);
+            border: 1px solid #fff;
+        }
+
+        .status-indicator {
+            width: 10px; height: 10px; background: #94a3b8; border-radius: 50%;
+            margin-right: 15px; position: relative;
+        }
+        .active .status-indicator {
+            background: var(--primary);
+            box-shadow: 0 0 0 2px rgba(255,255,255,1);
+        }
+        .active .status-indicator::after {
+            content: ''; position: absolute; top: -4px; left: -4px; right: -4px; bottom: -4px;
+            border-radius: 50%; background: var(--primary);
+            animation: pulse-ring 2.5s cubic-bezier(0.455, 0.03, 0.515, 0.955) infinite;
+            opacity: 0; z-index: -1;
+        }
+
+        @keyframes pulse-ring {
+            0% { transform: scale(0.5); opacity: 0; }
+            50% { opacity: 0.5; }
+            100% { transform: scale(2.5); opacity: 0; }
+        }
+
+        /* --- 主内容区 --- */
+        .main-content { 
+            flex: 1; display: flex; flex-direction: column; 
+            padding: 40px; overflow-y: auto; position: relative;
+        }
+        
+        .survey-card { 
+            background: white; width: 100%; max-width: 800px; padding: 60px; 
+            border-radius: 24px; box-shadow: 0 30px 60px -12px rgba(0,0,0,0.08); 
+            border: 1px solid #f1f5f9; margin: 0 auto; position: relative;
+        }
+        
+        .progress-container { width: 100%; background: #f1f5f9; height: 4px; border-radius: 10px; margin-bottom: 40px; }
+        .progress-bar { height: 100%; background: var(--primary); box-shadow: 0 0 10px var(--primary-glow); transition: width 0.8s ease; }
+        
+        .q-item { margin-bottom: 40px; animation: fadeIn 0.6s ease forwards; }
+        .q-text { font-size: 19px; color: var(--text-main); margin-bottom: 25px; font-weight: 600; line-height: 1.6; }
+        .q-num { color: #334155; font-family: 'SF Pro Display', serif; font-weight: 800; font-style: italic; margin-right: 12px; font-size: 26px; }
+        
+        .options-row { display: flex; gap: 12px; }
+        .opt-label { 
+            flex: 1; text-align: center; cursor: pointer; padding: 18px 5px; 
+            border-radius: 12px; transition: 0.2s cubic-bezier(0.4, 0, 0.2, 1); font-size: 14px; font-weight: 600;
+            background: #f1f5f9; border: 1px solid #cbd5e1; color: #475569;
+        }
+        .opt-label:hover { border-color: var(--primary); background: #e2e8f0; transform: translateY(-2px); }
+        
+        .opt-label.selected { 
+            background: var(--primary-dark); color: white; border-color: var(--primary-dark);
+            box-shadow: 0 8px 16px var(--primary-glow), inset 0 0 10px rgba(255,255,255,0.2);
+        }
+
+        .nav-footer { display: flex; justify-content: space-between; width: 100%; max-width: 800px; margin: 30px auto 60px; }
+        .btn { padding: 16px 45px; border-radius: 14px; border: none; cursor: pointer; font-weight: 700; transition: 0.3s; font-size: 15px; }
+        .btn-prev { background: #fff; color: #64748b; border: 1px solid #e2e8f0; }
+        .btn-next { background: var(--primary); color: white; box-shadow: 0 4px 12px var(--primary-glow); }
+        .btn-next:hover { transform: translateY(-2px); box-shadow: 0 8px 20px var(--primary-glow); }
+
+        /* --- 优化后的过场动画：背景淡化，突出中心 --- */
+        #aiOverlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(15, 23, 42, 0.7); /* 淡化的遮罩背景 */
+            backdrop-filter: blur(8px); /* 高斯模糊凸显中心 */
+            -webkit-backdrop-filter: blur(8px);
+            display: none; flex-direction: column; align-items: center; justify-content: center; z-index: 2000;
+        }
+        .analysis-box { 
+            text-align: center; 
+            padding: 50px;
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 20px 50px rgba(0,0,0,0.3);
+        }
+        .spinner-tech {
+            width: 80px; height: 80px; 
+            border: 4px solid rgba(255, 255, 255, 0.1);
+            border-top: 4px solid var(--primary); 
+            border-radius: 50%;
+            animation: spin 0.8s cubic-bezier(0.4, 0, 0.2, 1) infinite; 
+            margin: 0 auto 30px;
+            filter: drop-shadow(0 0 10px var(--primary));
+        }
+        .loading-text {
+            color: #ffffff; font-family: 'SF Pro Display', sans-serif; 
+            text-transform: uppercase; font-weight: 600;
+            letter-spacing: 4px; font-size: 18px; margin-bottom: 10px;
+        }
+        .log-subtext { color: #94a3b8; font-family: monospace; font-size: 12px; }
+        .tech-progress-wrap {
+            width: 200px; height: 3px; background: rgba(255,255,255,0.1); 
+            margin: 25px auto 0; border-radius: 3px; overflow: hidden;
+        }
+        #techLoader { width: 0%; height: 100%; background: var(--primary); transition: width 0.4s ease; box-shadow: 0 0 10px var(--primary); }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; }
+    </style>
+</head>
+<body>
+
+    <div class="sidebar">
+        <div class="user-section">
+            <div class="avatar">👤</div>
+            <div id="sideAccount" style="font-size: 18px; font-weight: 800; color: #1e293b;">LOADING...</div>
+            <div id="sideSport" class="sport-tag">SYSTEM ACTIVE</div>
+        </div>
+        <div class="menu-list">
+            <div class="menu-item active" id="menu-rrs">
+                <div class="status-indicator"></div>
+                01 反刍思维评估
+            </div>
+            <div class="menu-item" id="menu-flow">
+                <div class="status-indicator"></div>
+                02 心流状态分析
+            </div>
+        </div>
+        <div style="padding: 30px; font-size: 10px; color: #475569; border-top: 1px solid rgba(255,255,255,0.2); letter-spacing: 1px;">
+            CORE: AR-PERFORMANCE<br>
+            STABILITY: 99.9%
+        </div>
+    </div>
+
+    <div class="main-content" id="scrollArea">
+        <div class="survey-card">
+            <div class="progress-container">
+                <div class="progress-bar" id="progressBar" style="width: 0%"></div>
+            </div>
+            
+            <div style="margin-bottom: 40px;">
+                <h2 id="scaleTitle" style="font-size: 24px; color: var(--text-main); margin: 0 0 8px 0;">初始化测评系统...</h2>
+                <p id="pageProgressLabel" style="color: var(--text-muted); font-size: 14px; font-family: monospace;"></p>
+            </div>
+
+            <div id="questionsBox"></div>
+        </div>
+
+        <div class="nav-footer">
+            <button class="btn btn-prev" id="prevBtn" onclick="prevPage()">返回</button>
+            <button class="btn btn-next" id="nextBtn" onclick="nextPage()">下一页</button>
+        </div>
+    </div>
+
+    <div id="aiOverlay">
+        <div class="analysis-box">
+            <div class="spinner-tech"></div>
+            <div class="loading-text">Intelligence Analysis</div>
+            <p id="logText" class="log-subtext">Calculating athlete performance indices...</p>
+            <div class="tech-progress-wrap">
+                <div id="techLoader"></div>
+            </div>
+        </div>
+    </div>
+
+<script>
+    // 1. 反刍思维题目 (22题)
+    const rrsQuestions = [
+        "我常常想我是多么孤独",
+        "我常常想：“如果我不停止想这些，那么我就不能继续做手头的事”",
+        "我常常想我疲劳、痛苦的感觉",
+        "我常常想“集中注意力是多么的困难”",
+        "我常常想我究竟做了什么会导致这样",
+        "我常常想自己是多么消极被动、毫无动力",
+        "我常常分析最近发生的事以便理解为什么感到郁闷",
+        "我常常想我对其他享情感到麻木",
+        "我常常想我为什么如此不顺心",
+        "我常常想我为什么总是这样",
+        "我常常独自思考为什么会这样",
+        "我常常写下自己正在想的事情并加以分析",
+        "我常常思考现状，希望它有所好转",
+        "我常常想如果这种感觉持续的话，就无法集中注意",
+        "我常常想为什么我有这些问题，而别人却没有",
+        "我常常想我为什么不能把事情处理的更好",
+        "我常常想我为什么感到如此伤心",
+        "我常常想我的缺点、失败、错误和过失",
+        "我常常想，“我对做任何事都提不起劲来",
+        "我常常分析自己的性格以便理解为何感到压抑",
+        "我常常单独到某个地方去想我的感受",
+        "我常常想我是多么地生自己的气"
+    ];
+
+    // 2. 心流题目 (36题)
+    const flowQuestions = [
+        "我面临挑战，但我认为我的技术完全可以让我迎接挑战。",
+        "我不用考虑就能做出正确的动作。",
+        "我清楚的知道我想做什么。",
+        "我清楚我做的非常好。",
+        "我的注意力完全集中在与活动有关的内容上。",
+        "我感觉到完全能控制我所做的动作。",
+        "我不关心其他人如何看待我。",
+        "我觉得时间好像不断变换，一会过的快、一会过的慢。",
+        "我真得很喜欢活动中的体验。",
+        "我的能力符合活动的高要求。",
+        "事情看起来好像是自然而然发生的。",
+        "对我想做的事有一种强烈愿望。",
+        "我意识到了我的能力发挥的有多好。",
+        "我可以不费力的把注意力集中到正在进行的活动上。",
+        "我感到我能够控制我正在进行的活动。",
+        "在活动中我不用考虑我的成绩。",
+        "我感觉时间的变化和平常不一样。",
+        "我喜欢这次活动的感觉并想再次感受它。",
+        "我认为我有足够的能力以满足活动的高要求。",
+        "我在活动中得心应手。",
+        "我知道我所要达到的目标。",
+        "在活动时，我清楚的意识到我能做的更好。",
+        "我完全能集中注意力。",
+        "我有完全的控制能力。",
+        "我不关心我的成绩怎样。",
+        "当我活动时，时间仿佛停止了。",
+        "这种经历使我感到满足。",
+        "我所具备的能力和所面临的要求在相同的高度上。",
+        "我不用思考、完全自动化低做动作。",
+        "我有很明确的目标。",
+        "我能说出我在活动中表现的有多好。",
+        "我完全把注意力集中在所要完成的任务上。",
+        "我感觉到完全控制了我的身体。",
+        "我不担心其他人怎样看待我。",
+        "有时，整个活动场景好像是慢动作进行。",
+        "我发现这种经历是非常值得的。"
+    ];
+
+    const options = ["几乎没有", "有时", "经常", "始终如此"];
+    const Q_PER_PAGE = 5; 
+
+    let currentScale = 'rrs'; 
+    let currentPage = 0;
+    let answers = { rrs: {}, flow: {} };
+    let account = "";
+    let sportItem = "";
+
+    window.onload = () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        account = urlParams.get('account') || "ATHLETE-001";
+        sportItem = urlParams.get('sport') || "AR REFLEX TRAINING";
+        document.getElementById('sideAccount').innerText = account;
+        document.getElementById('sideSport').innerText = sportItem;
+        renderPage();
+    };
+
+    function renderPage() {
+        const questions = currentScale === 'rrs' ? rrsQuestions : flowQuestions;
+        const totalPages = Math.ceil(questions.length / Q_PER_PAGE);
+        const start = currentPage * Q_PER_PAGE;
+        const pageQs = questions.slice(start, start + Q_PER_PAGE);
+
+        document.getElementById('scaleTitle').innerText = currentScale === 'rrs' ? "反刍思维评估 (RRS)" : "心流状态分析 (FLOW)";
+        document.getElementById('pageProgressLabel').innerText = `PHASE_${currentScale === 'rrs' ? '01' : '02'} // PAGE_${currentPage + 1}_OF_${totalPages}`;
+        
+        document.getElementById('menu-rrs').className = `menu-item ${currentScale === 'rrs' ? 'active' : ''}`;
+        document.getElementById('menu-flow').className = `menu-item ${currentScale === 'flow' ? 'active' : ''}`;
+        
+        const progress = currentScale === 'rrs' ? (currentPage/totalPages)*50 : 50 + (currentPage/totalPages)*50;
+        document.getElementById('progressBar').style.width = `${progress}%`;
+
+        const box = document.getElementById('questionsBox');
+        box.innerHTML = pageQs.map((q, i) => {
+            const qIndex = start + i;
+            const isSelValue = answers[currentScale][qIndex];
+            return `
+                <div class="q-item">
+                    <div class="q-text"><span class="q-num">${(qIndex+1).toString().padStart(2,'0')}</span>${q}</div>
+                    <div class="options-row">
+                        ${options.map((opt, optIdx) => `
+                            <label class="opt-label ${isSelValue === optIdx+1 ? 'selected' : ''}" 
+                                   onclick="recordAnswer('${currentScale}', ${qIndex}, ${optIdx+1}, this)">
+                                ${opt}
+                            </label>
+                        `).join('')}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+        document.getElementById('prevBtn').style.visibility = (currentPage === 0 && currentScale === 'rrs') ? 'hidden' : 'visible';
+        document.getElementById('nextBtn').innerText = (currentScale === 'flow' && currentPage === totalPages - 1) ? "生成评估分析报告" : "下一页";
+        document.getElementById('scrollArea').scrollTop = 0;
+    }
+
+    window.recordAnswer = (scale, qIdx, val, element) => {
+        answers[scale][qIdx] = val;
+        const row = element.parentElement;
+        row.querySelectorAll('.opt-label').forEach(l => l.classList.remove('selected'));
+        element.classList.add('selected');
+    };
+
+    function nextPage() {
+        const questions = currentScale === 'rrs' ? rrsQuestions : flowQuestions;
+        const totalPages = Math.ceil(questions.length / Q_PER_PAGE);
+
+        if (currentPage < totalPages - 1) {
+            currentPage++;
+            renderPage();
+        } else if (currentScale === 'rrs') {
+            currentScale = 'flow'; currentPage = 0; renderPage();
+        } else {
+            startAnalysisAnimation();
+        }
+    }
+
+    function prevPage() {
+        if (currentPage > 0) { currentPage--; } 
+        else if (currentScale === 'flow') { currentScale = 'rrs'; currentPage = Math.ceil(rrsQuestions.length/Q_PER_PAGE)-1; }
+        renderPage();
+    }
+
+    function startAnalysisAnimation() {
+        const overlay = document.getElementById('aiOverlay');
+        const logText = document.getElementById('logText');
+        const loader = document.getElementById('techLoader');
+        overlay.style.display = 'flex';
+
+        const logs = [
+            "Syncing assessment data...", 
+            "Running normative comparison...", 
+            "Generating athlete profile...", 
+            "Analysis complete."
+        ];
+        let step = 0;
+        const interval = setInterval(() => {
+            if (step < logs.length) {
+                logText.innerText = logs[step];
+                loader.style.width = ((step + 1) / logs.length) * 100 + "%";
+                step++;
+            } else {
+                clearInterval(interval);
+                setTimeout(() => {
+                    window.location.href = `report.html?account=${encodeURIComponent(account)}&sport=${encodeURIComponent(sportItem)}`;
+                }, 600);
+            }
+        }, 850);
+    }
+</script>
+</body>
+</html>

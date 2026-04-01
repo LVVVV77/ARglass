@@ -1,0 +1,358 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <title>AR 设备管理终端</title>
+    <style>
+        :root {
+            --primary: #2196f3;
+            --reset-color: #f44336;
+            --login-color: #4caf50;
+            /* 侧边栏渐变：进一步加深灰色权重 */
+            --sidebar-grad-start: #ffffff;
+            --sidebar-grad-mid: #cbd5e0;
+            --sidebar-grad-end: #94a3b8; 
+        }
+
+        body { font-family: 'PingFang SC', 'Helvetica Neue', sans-serif; background: #eaeff2; display: flex; height: 100vh; margin: 0; overflow: hidden; }
+
+        /* 侧边栏优化：更深邃的渐变和明显的视觉分割 */
+        .sidebar { 
+            width: 360px; 
+            background: linear-gradient(to bottom, var(--sidebar-grad-start) 0%, var(--sidebar-grad-mid) 50%, var(--sidebar-grad-end) 100%);
+            display: flex; 
+            flex-direction: column; 
+            border-right: 1px solid #64748b;
+            position: relative;
+            box-shadow: 4px 0 15px rgba(0,0,0,0.1);
+        }
+
+        .sidebar-header { 
+            padding: 50px 30px 20px; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: flex-end; 
+        }
+        .logo-text { 
+            font-size: 32px; 
+            font-weight: 900; 
+            color: #1a237e; 
+            line-height: 1.1;
+            letter-spacing: 2px;
+        }
+        .logo-text span { display: block; }
+        
+        .refresh-btn {
+            font-size: 13px;
+            color: #1a237e;
+            cursor: pointer;
+            padding: 5px 12px;
+            border-radius: 20px;
+            transition: 0.3s;
+            background: rgba(255,255,255,0.7);
+            border: 1px solid rgba(26, 35, 126, 0.3);
+            font-weight: bold;
+        }
+        .refresh-btn:hover { background: #1a237e; color: white; }
+
+        .device-list { flex: 1; padding: 15px; overflow-y: auto; transition: opacity 0.3s; }
+        
+        .device-item { 
+            background: rgba(255, 255, 255, 0.9); 
+            padding: 15px; 
+            border-radius: 18px; 
+            margin-bottom: 15px;
+            cursor: pointer; 
+            border: 2px solid transparent; 
+            display: flex; 
+            align-items: center; 
+            gap: 15px;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.02);
+        }
+        .device-item:hover { background: #fff; transform: translateX(8px); }
+        .device-item.active { 
+            border-color: var(--primary); 
+            background: white;
+            box-shadow: 0 8px 25px rgba(33,150,243,0.3); 
+        }
+
+        .device-img-box {
+            width: 65px; height: 65px; border-radius: 12px;
+            background: #eee; overflow: hidden; flex-shrink: 0;
+            border: 1px solid #ddd;
+        }
+        .device-img { width: 100%; height: 100%; object-fit: cover; }
+
+        .device-info { flex: 1; }
+        .dev-name { font-weight: 800; font-size: 15px; color: #1a237e; }
+        .dev-status { font-size: 11px; color: #475569; margin-top: 4px; display: flex; align-items: center; gap: 5px; }
+
+        .add-device-btn { height: 100px; display: flex; justify-content: center; align-items: center; }
+        .plus-circle {
+            width: 50px; height: 50px; background: #1a237e; color: white;
+            border-radius: 50%; display: flex; justify-content: center; align-items: center;
+            font-size: 32px; cursor: pointer; transition: 0.3s;
+            box-shadow: 0 4px 15px rgba(26, 35, 126, 0.4);
+        }
+        .plus-circle:hover { transform: scale(1.1); background: var(--primary); }
+
+        /* 主内容区域 */
+        .main-content { flex: 1; display: flex; justify-content: center; align-items: center; background: radial-gradient(circle at center, #ffffff 0%, #eaeff2 100%); }
+        .card { background: white; padding: 40px; border-radius: 28px; box-shadow: 0 25px 50px rgba(0,0,0,0.06); width: 420px; transition: 0.4s; }
+        .mode-indicator { display: inline-block; padding: 5px 14px; border-radius: 20px; font-size: 12px; font-weight: 600; margin-bottom: 18px; }
+        .mode-reg { background: #e3f2fd; color: #1976d2; }
+        .mode-login { background: #e8f5e9; color: #2e7d32; }
+        .mode-reset { background: #ffebee; color: #c62828; }
+        
+        .input-group { margin-bottom: 18px; }
+        input[type="text"], input[type="password"] { 
+            width: 100%; padding: 16px; border: 1.5px solid #eee; border-radius: 14px; 
+            outline: none; box-sizing: border-box; font-size: 15px; transition: 0.3s; 
+        }
+        input:focus { border-color: var(--primary); background: #fff; }
+        
+        #codeArea.hidden { display: none; }
+        .code-wrap { display: flex; gap: 10px; }
+        #sendBtn { width: 140px; background: #f0f2f5; border: none; border-radius: 12px; cursor: pointer; font-size: 13px; font-weight: 600; transition: 0.3s; }
+        #sendBtn:disabled { cursor: not-allowed; color: #999; background: #e0e0e0; }
+
+        .agreement-area { margin: 15px 0; display: flex; align-items: center; gap: 8px; font-size: 13px; color: #666; }
+        .agreement-area input[type="checkbox"] { cursor: pointer; width: 16px; height: 16px; accent-color: var(--primary); }
+        .agreement-area a { color: var(--primary); text-decoration: none; font-weight: 600; }
+
+        #submitBtn { width: 100%; padding: 18px; border: none; border-radius: 14px; color: white; font-weight: bold; font-size: 16px; cursor: pointer; margin-top: 5px; transition: 0.3s; }
+        #submitBtn:active { transform: scale(0.98); }
+
+        .footer-nav { margin-top: 25px; display: flex; justify-content: space-between; font-size: 14px; border-top: 1px solid #f0f0f0; padding-top: 20px; }
+        .footer-nav a { color: var(--primary); text-decoration: none; cursor: pointer; font-weight: 500; }
+        
+        #toast { position: fixed; top: 30px; left: 50%; transform: translateX(-50%); padding: 12px 30px; border-radius: 12px; background: #333; color: white; font-size: 14px; opacity: 0; transition: 0.3s; z-index: 1000; pointer-events: none; }
+    </style>
+</head>
+<body>
+
+<div id="toast">提示信息</div>
+
+<div class="sidebar">
+    <div class="sidebar-header">
+        <div class="logo-text">
+            <span>AR</span>
+            <span>设备列表</span>
+        </div>
+        <div class="refresh-btn" onclick="refreshDevices()">同步刷新</div>
+    </div>
+    
+    <div id="deviceList" class="device-list"></div>
+    
+    <div class="add-device-btn">
+        <div class="plus-circle" onclick="discoverNewDevices()">+</div>
+    </div>
+</div>
+
+<div class="main-content">
+    <div class="card" id="mainCard">
+        <div id="modeTag" class="mode-indicator mode-reg">注册模式</div>
+        <h2 id="cardTitle" style="margin:0 0 8px 0; color:#1a237e;">新用户注册</h2>
+        <p id="cardSub" style="margin:0 0 25px 0; font-size:13px; color:#777;">初始化 AR 设备身份密钥</p>
+
+        <div class="input-group">
+            <input type="text" id="account" placeholder="输入手机号 / 账户名">
+        </div>
+
+        <div class="input-group" id="codeArea">
+            <div class="code-wrap">
+                <input type="text" id="code" placeholder="验证码" maxlength="6">
+                <button id="sendBtn" onclick="handleSendCode()">获取验证码</button>
+            </div>
+        </div>
+
+        <div class="input-group">
+            <input type="password" id="password" placeholder="访问密码">
+        </div>
+
+        <div class="agreement-area">
+            <input type="checkbox" id="agreeCheck">
+            <label for="agreeCheck">我已阅读并同意 <a href="#">服务协议</a> 与 <a href="#">隐私政策</a></label>
+        </div>
+
+        <button id="submitBtn" onclick="handleMainAction()" style="background: var(--primary);">立即注册</button>
+
+        <div class="footer-nav">
+            <a id="leftLink" onclick="switchMode('login')">已有账号登录</a>
+            <a id="rightLink" onclick="switchMode('reset')">找回密码</a>
+        </div>
+    </div>
+</div>
+
+<script>
+    let currentMode = 'register';
+    let selectedDevice = null;
+    
+    const timers = {
+        register: { count: 0, timer: null },
+        reset: { count: 0, timer: null }
+    };
+
+    const devices = [ 
+        { id: '1', name: 'AR Glass Pro (灰)', status: '已识别', img: 'ARhui.jpg' }, 
+        { id: '2', name: 'AR Glass Air (银)', status: '就绪', img: 'ARyin.jpg' } 
+    ];
+
+    function renderDevices() {
+        const list = document.getElementById('deviceList');
+        list.innerHTML = devices.map(d => `
+            <div class="device-item ${selectedDevice === d.id ? 'active' : ''}" onclick="selectDev('${d.id}')">
+                <div class="device-img-box">
+                    <img src="${d.img}" class="device-img" onerror="this.src='https://cdn-icons-png.flaticon.com/512/641/641818.png'">
+                </div>
+                <div class="device-info">
+                    <div class="dev-name">${d.name}</div>
+                    <div class="dev-status">
+                        <span style="width:7px; height:7px; background:${selectedDevice === d.id ? '#4caf50' : '#bdc3c7'}; border-radius:50%"></span>
+                        ${selectedDevice === d.id ? '已连接' : d.status}
+                    </div>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function selectDev(id) { 
+        if (selectedDevice === id) {
+            selectedDevice = null; 
+            showToast("硬件已断开");
+        } else {
+            selectedDevice = id; 
+            showToast("AR 硬件链路已激活", "success"); 
+        }
+        renderDevices(); 
+    }
+
+    // 发现新设备逻辑
+    function discoverNewDevices() {
+        showToast("正在通过蓝牙搜索附近设备...", "info");
+        const list = document.getElementById('deviceList');
+        list.style.opacity = '0.3';
+        
+        setTimeout(() => {
+            renderDevices();
+            list.style.opacity = '1';
+            showToast("发现 2 台可用 AR 设备，已同步至列表", "success");
+        }, 1200);
+    }
+
+    function refreshDevices() {
+        showToast("正在同步 AR 硬件状态...", "info");
+        const list = document.getElementById('deviceList');
+        list.style.opacity = '0.3';
+        setTimeout(() => {
+            renderDevices();
+            list.style.opacity = '1';
+            showToast("同步完成", "success");
+        }, 800);
+    }
+
+    function updateSendBtnUI() {
+        const btn = document.getElementById('sendBtn');
+        if (!btn || currentMode === 'login') return;
+        const currentCount = timers[currentMode].count;
+        if (currentCount > 0) {
+            btn.disabled = true;
+            btn.innerText = `${currentCount}s 后重发`;
+        } else {
+            btn.disabled = false;
+            btn.innerText = "获取验证码";
+        }
+    }
+
+    function handleSendCode() {
+        const acc = document.getElementById('account').value;
+        if (!acc) return showToast("请输入账户名", "error");
+
+        if (timers[currentMode].count === 0) {
+            timers[currentMode].count = 60;
+            showToast("验证码已发送成功，请注意查收", "success");
+            timers[currentMode].timer = setInterval(() => {
+                timers[currentMode].count--;
+                if (timers[currentMode].count <= 0) {
+                    clearInterval(timers[currentMode].timer);
+                    timers[currentMode].count = 0;
+                }
+                updateSendBtnUI();
+            }, 1000);
+        }
+        updateSendBtnUI();
+    }
+
+    function switchMode(mode) {
+        currentMode = mode;
+        const tag = document.getElementById('modeTag');
+        const title = document.getElementById('cardTitle');
+        const sub = document.getElementById('cardSub');
+        const codeArea = document.getElementById('codeArea');
+        const submitBtn = document.getElementById('submitBtn');
+        const leftLink = document.getElementById('leftLink');
+        const rightLink = document.getElementById('rightLink');
+        
+        document.getElementById('agreeCheck').checked = false;
+        updateSendBtnUI();
+
+        if (mode === 'login') {
+            tag.className = "mode-indicator mode-login"; tag.innerText = "登录模式";
+            title.innerText = "欢迎回来"; sub.innerText = "请通过身份核验以进入系统";
+            submitBtn.innerText = "立即登录"; submitBtn.style.background = "var(--login-color)";
+            codeArea.classList.add('hidden');
+            leftLink.innerText = "创建新账号"; leftLink.onclick = () => switchMode('register');
+            rightLink.style.display = "block";
+        } else if (mode === 'register') {
+            tag.className = "mode-indicator mode-reg"; tag.innerText = "注册模式";
+            title.innerText = "新用户注册"; sub.innerText = "初始化 AR 设备身份密钥";
+            submitBtn.innerText = "立即注册"; submitBtn.style.background = "var(--primary)";
+            codeArea.classList.remove('hidden');
+            leftLink.innerText = "已有账号登录"; leftLink.onclick = () => switchMode('login');
+            rightLink.style.display = "block";
+        } else if (mode === 'reset') {
+            tag.className = "mode-indicator mode-reset"; tag.innerText = "重置模式";
+            title.innerText = "安全重置"; sub.innerText = "通过双重验证找回访问权限";
+            submitBtn.innerText = "确认重置密码"; submitBtn.style.background = "var(--reset-color)";
+            codeArea.classList.remove('hidden');
+            leftLink.innerText = "返回登录"; leftLink.onclick = () => switchMode('login');
+            rightLink.style.display = "none";
+        }
+    }
+
+    async function handleMainAction() {
+        if (!selectedDevice) return showToast("请先在左侧选择 AR 硬件设备", "error");
+        const acc = document.getElementById('account').value;
+        if (!acc) return showToast("请输入账户名", "error");
+        const isAgreed = document.getElementById('agreeCheck').checked;
+        if (!isAgreed) return showToast("请先勾选并同意用户协议", "error");
+
+        const btn = document.getElementById('submitBtn');
+        if (currentMode === 'login') {
+            btn.innerText = "核验中...";
+            setTimeout(() => {
+                showToast("核验通过，欢迎回来", "success");
+                setTimeout(() => window.location.href = `profile.html?account=${encodeURIComponent(acc)}`, 800);
+            }, 1000);
+        } else {
+            btn.innerText = "同步中...";
+            setTimeout(() => {
+                showToast("操作成功", "success");
+                setTimeout(() => switchMode('login'), 800);
+            }, 1000);
+        }
+    }
+
+    function showToast(msg, type = "info") {
+        const t = document.getElementById('toast');
+        t.innerText = msg;
+        t.style.background = type === "error" ? "#f44336" : (type === "success" ? "#4caf50" : "#333");
+        t.style.opacity = 1;
+        setTimeout(() => t.style.opacity = 0, 2500);
+    }
+
+    window.onload = renderDevices;
+</script>
+</body>
+</html>
